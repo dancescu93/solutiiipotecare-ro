@@ -1,5 +1,10 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { LeadForm } from "@/components/forms/lead-form"
+// Am schimbat importul pentru a folosi metoda nativă și sigură
+import { createClient } from "next-sanity"
 import {
   ArrowRight,
   BadgeCheck,
@@ -20,24 +25,49 @@ import {
   WalletCards,
 } from "lucide-react"
 
+// Configurația clientului Sanity integrată direct
+const sanityClient = createClient({
+  projectId: "ver0ns79",
+  dataset: "production",
+  apiVersion: "2024-05-14",
+  useCdn: false, // False pentru a vedea modificările instant pe site
+})
+
+type HomepageContent = {
+  heroTitle: string
+  heroSubtitle: string
+  ctaPrimary: string
+  ctaSecondary: string
+  phone: string
+}
+
+const defaultHomepage: HomepageContent = {
+  heroTitle: "Obții mai mult decât un credit.",
+  heroSubtitle:
+    "Te consiliem până la semnarea contractului, te ajutăm cu documentele necesare și comparăm opțiuni relevante din piață ca să găsim soluția potrivită pentru tine.",
+  ctaPrimary: "Aplică online",
+  ctaSecondary: "Discută pe WhatsApp",
+  phone: "40735984545",
+}
+
 const services = [
   {
     title: "Credit ipotecar",
     description:
-      "Pentru achiziția unei locuințe, cu analiză clară a opțiunilor și suport complet.",
+      "Analizăm ofertele tuturor băncilor pentru ca tu să obții cea mai bună dobândă la achiziția locuinței.",
     icon: House,
   },
   {
     title: "Refinanțare",
     description:
-      "Pentru costuri mai bune, rată mai avantajoasă sau o structură mai potrivită a creditului.",
+      "Scade-ți rata lunară sau obține condiții mai bune pentru creditele pe care le ai deja în derulare.",
     icon: WalletCards,
   },
   {
-    title: "Consultanță personalizată",
+    title: "Credit Auto",
     description:
-      "Primești recomandări clare, adaptate situației tale, nu răspunsuri generale.",
-    icon: ShieldCheck,
+      "Soluții rapide pentru achiziția mașinii dorite, noi sau second-hand, cu aprobare simplificată.",
+    icon: KeyRound,
   },
 ]
 
@@ -114,7 +144,7 @@ const benefits = [
   {
     title: "Experiență și contacte în domeniile adiacente",
     description:
-      "Te putem orienta și către profesioniști utili în etapele conexe procesului.",
+      "Te poți orienta și către profesioniști utili în etapele conexe procesului.",
     icon: Headphones,
   },
   {
@@ -184,7 +214,7 @@ function HeroVisual() {
 
                   <div className="flex-1">
                     <div className="flex items-center gap-3">
-                      <span className="text-xs font-bold tracking-[0.2em] text-slate-400">
+                      <span className="text-xs font-bold tracking-[0.2em] text-black">
                         {item.step}
                       </span>
                       <h4 className="text-lg font-bold text-slate-900">
@@ -216,35 +246,86 @@ function HeroVisual() {
 }
 
 export default function HomePage() {
+  const [homepage, setHomepage] = useState<HomepageContent>(defaultHomepage)
+
+  useEffect(() => {
+    let active = true
+
+    sanityClient
+      .fetch(
+        `*[_type == "homepage"][0]{
+          heroTitle,
+          heroSubtitle,
+          ctaPrimary,
+          ctaSecondary,
+          phone
+        }`
+      )
+      .then((data) => {
+        if (!active || !data) return
+
+        setHomepage({
+          heroTitle: data.heroTitle || defaultHomepage.heroTitle,
+          heroSubtitle: data.heroSubtitle || defaultHomepage.heroSubtitle,
+          ctaPrimary: data.ctaPrimary || defaultHomepage.ctaPrimary,
+          ctaSecondary: data.ctaSecondary || defaultHomepage.ctaSecondary,
+          phone: data.phone || defaultHomepage.phone,
+        })
+      })
+      .catch(() => {
+        setHomepage(defaultHomepage)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const scrollToContact = () => {
+    document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  const openWhatsApp = () => {
+    const phone = homepage.phone.replace(/[^\d]/g, "") || defaultHomepage.phone
+    const message = encodeURIComponent(
+      "Bună ziua! Am văzut site-ul solutiipotecare.ro și doresc mai multe detalii."
+    )
+    window.open(`https://wa.me/${phone}?text=${message}`, "_blank")
+  }
+
   return (
     <main className="min-h-screen bg-[#F8FAFC] text-slate-900">
       <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div>
-            <p className="text-2xl font-black tracking-tight text-slate-900">
-              solutiiipotecare.ro
-            </p>
-            <p className="text-xs text-slate-500">
-              Broker de credite • sprijin real până la semnare
-            </p>
+          <div className="cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+            <div className="flex items-center gap-3">
+              <div className="bg-[#0F766E] p-2 rounded-xl shadow-md">
+                <Building2 className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex flex-col">
+                <p className="text-2xl font-black tracking-tighter text-slate-900 leading-none">
+                  solutii<span className="text-[#0F766E]">ipotecare</span>.ro
+                </p>
+                <p className="text-[10px] md:text-xs text-slate-500 mt-1 font-bold uppercase tracking-[0.1em]">
+                  Broker de credite
+                </p>
+              </div>
+            </div>
           </div>
 
           <nav className="hidden items-center gap-8 text-sm font-semibold text-slate-600 md:flex">
-            <a href="#servicii" className="hover:text-slate-900">
+            <a href="#servicii" className="hover:text-slate-900 transition-colors">
               Servicii
             </a>
-            <a href="#proces" className="hover:text-slate-900">
+            <a href="#proces" className="hover:text-slate-900 transition-colors">
               Proces
             </a>
-            <a href="#beneficii" className="hover:text-slate-900">
+            <a href="#beneficii" className="hover:text-slate-900 transition-colors">
               Beneficii
-            </a>
-            <a href="#contact" className="hover:text-slate-900">
-              Contact
             </a>
           </nav>
 
-          <Button className="rounded-xl bg-[#0F766E] px-6 text-white hover:bg-[#0b5e58]">
+          <Button onClick={scrollToContact} className="rounded-xl bg-[#0F766E] px-6 text-white hover:bg-[#0b5e58]">
             Aplică acum
           </Button>
         </div>
@@ -260,8 +341,8 @@ export default function HomePage() {
                 Lucrăm cu majoritatea băncilor din România
               </div>
 
-              <h1 className="max-w-3xl text-5xl font-black leading-[1.02] tracking-tight md:text-6xl">
-                Obții mai mult decât un credit.
+              <h1 className="max-w-3xl text-5xl font-black leading-[1.02] tracking-tight md:text-6xl text-slate-900">
+                {homepage.heroTitle}
               </h1>
 
               <div className="mt-3 inline-block rounded-2xl bg-[#0F172A] px-4 py-3 text-3xl font-black leading-tight text-white md:text-5xl">
@@ -269,12 +350,10 @@ export default function HomePage() {
               </div>
 
               <p className="mt-7 max-w-2xl text-lg leading-8 text-slate-600">
-                Te consiliem până la semnarea contractului, te ajutăm cu
-                documentele necesare și comparăm opțiuni relevante din piață ca
-                să găsim soluția potrivită pentru tine.
+                {homepage.heroSubtitle}
               </p>
 
-              <div className="mt-8 space-y-3">
+              <div className="mt-8 space-y-3 inline-block text-left">
                 {[
                   "Afli rapid ce variantă are sens pentru tine",
                   "Știi din timp ce documente trebuie pregătite",
@@ -292,16 +371,18 @@ export default function HomePage() {
                 ))}
               </div>
 
-              <div className="mt-10 flex flex-wrap gap-4">
-                <Button className="rounded-xl bg-[#0F766E] px-7 py-6 text-base font-bold text-white hover:bg-[#0b5e58]">
-                  Aplică online
+              <div className="mt-10 flex flex-col sm:flex-row gap-4">
+                <Button onClick={scrollToContact} className="w-full sm:w-auto rounded-xl bg-[#0F766E] px-7 py-6 text-base font-bold text-white hover:bg-[#0b5e58]">
+                  {homepage.ctaPrimary}
                 </Button>
 
                 <Button
+                  onClick={openWhatsApp}
                   variant="outline"
-                  className="rounded-xl border-slate-300 bg-white px-7 py-6 text-base font-bold text-slate-900 hover:bg-slate-50"
+                  className="w-full sm:w-auto rounded-xl border-slate-300 bg-white px-7 py-6 text-base font-bold text-slate-900 hover:bg-slate-50 flex items-center gap-2"
                 >
-                  Discută cu noi
+                  <PhoneCall className="h-4 w-4 text-[#0F766E]" />
+                  {homepage.ctaSecondary}
                 </Button>
               </div>
             </div>
@@ -313,16 +394,16 @@ export default function HomePage() {
 
       <section className="px-6 pb-8">
         <div className="mx-auto max-w-7xl overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-sm">
-          <div className="grid lg:grid-cols-[0.9fr_1.1fr]">
-            <div className="bg-[#0F172A] px-8 py-10 text-white md:px-10">
+          <div className="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr]">
+            <div className="bg-[#0F172A] px-8 py-10 text-white md:px-10 text-center lg:text-left">
               <SectionLabel>De ce să rămâi pe site</SectionLabel>
-              <h2 className="mt-3 text-4xl font-black tracking-tight md:text-5xl text-white">
+              <h2 className="mt-3 text-3xl font-black tracking-tight md:text-5xl text-white">
                 Nu doar comparăm.
                 <br />
                 Te ghidăm.
               </h2>
 
-              <p className="mt-5 max-w-xl text-lg leading-8 text-slate-300">
+              <p className="mt-5 max-w-xl text-lg leading-8 text-slate-300 mx-auto lg:mx-0">
                 Rolul nostru nu este doar să trimitem o cerere mai departe, ci
                 să simplificăm procesul și să îți oferim claritate încă de la
                 început.
@@ -351,9 +432,9 @@ export default function HomePage() {
 
       <section id="servicii" className="px-6 py-18">
         <div className="mx-auto max-w-7xl">
-          <div className="mb-12 max-w-2xl">
+          <div className="mb-12 max-w-2xl text-center md:text-left">
             <SectionLabel>Servicii</SectionLabel>
-            <h2 className="mt-3 text-4xl font-black tracking-tight md:text-5xl">
+            <h2 className="mt-3 text-3xl font-black tracking-tight md:text-5xl">
               Cum te putem ajuta
             </h2>
           </div>
@@ -377,9 +458,12 @@ export default function HomePage() {
                     {service.description}
                   </p>
 
-                  <div className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-[#0F766E]">
-                    Află mai multe <ArrowRight className="h-4 w-4" />
-                  </div>
+                  <button
+                    onClick={scrollToContact}
+                    className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-[#0F766E] hover:gap-3 transition-all"
+                  >
+                    Solicită ofertă <ArrowRight className="h-4 w-4" />
+                  </button>
                 </div>
               )
             })}
@@ -389,15 +473,14 @@ export default function HomePage() {
 
       <section id="proces" className="px-6 py-18">
         <div className="mx-auto max-w-7xl">
-          <div className="mb-12 max-w-3xl">
+          <div className="mb-12 max-w-3xl text-center md:text-left">
             <SectionLabel>Procesul nostru</SectionLabel>
-            <h2 className="mt-3 text-4xl font-black tracking-tight md:text-5xl">
+            <h2 className="mt-3 text-3xl font-black tracking-tight md:text-5xl text-slate-900">
               Te consiliem până la semnarea contractului
             </h2>
             <p className="mt-4 text-lg leading-8 text-slate-600">
               Aplici, discutăm, analizăm opțiunile, te ajutăm cu documentele și
-              mergem până la finalizare. Accentul este pe pași clari și beneficii
-              reale pentru tine.
+              mergem până la finalizare.
             </p>
           </div>
 
@@ -417,7 +500,7 @@ export default function HomePage() {
                     <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-50">
                       <Icon className="h-7 w-7 text-[#0F766E]" />
                     </div>
-                    <span className="text-4xl font-black text-slate-200">
+                    <span className="text-4xl font-black text-black">
                       {step.step}
                     </span>
                   </div>
@@ -432,31 +515,25 @@ export default function HomePage() {
               )
             })}
           </div>
-
-          <div className="mt-8 rounded-[24px] border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-900">
-            Oferta finală poate varia în funcție de profilul financiar, venit,
-            avans, istoricul de credit, documentație și condițiile practicate de
-            bancă în momentul analizei.
-          </div>
         </div>
       </section>
 
       <section id="beneficii" className="px-6 py-18">
         <div className="mx-auto max-w-7xl">
-          <div className="mb-12 max-w-3xl">
+          <div className="mb-12 max-w-3xl text-center md:text-left">
             <SectionLabel>Beneficii reale</SectionLabel>
-            <h2 className="mt-3 text-4xl font-black tracking-tight md:text-5xl">
+            <h2 className="mt-3 text-3xl font-black tracking-tight md:text-5xl text-slate-900">
               Sprijin real, nu doar promisiuni
             </h2>
           </div>
 
           <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr]">
-            <div className="rounded-[34px] bg-gradient-to-br from-teal-800 to-slate-900 p-8 text-white shadow-xl">
+            <div className="rounded-[34px] bg-gradient-to-br from-teal-800 to-slate-900 p-8 text-white shadow-xl text-center lg:text-left">
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-200">
                 Ce contează pentru tine
               </p>
 
-              <h3 className="mt-3 text-3xl font-black leading-tight">
+              <h3 className="mt-3 text-3xl font-black leading-tight text-white">
                 Mai puțin stres.
                 <br />
                 Mai puține drumuri.
@@ -464,7 +541,7 @@ export default function HomePage() {
                 Mai multă claritate.
               </h3>
 
-              <div className="mt-8 space-y-4">
+              <div className="mt-8 space-y-4 inline-block text-left">
                 {[
                   "Știi ce documente sunt necesare",
                   "Ai o imagine clară asupra pașilor",
@@ -511,7 +588,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl">
           <div className="mb-12 text-center">
             <SectionLabel>Încredere</SectionLabel>
-            <h2 className="mt-3 text-4xl font-black tracking-tight md:text-5xl">
+            <h2 className="mt-3 text-4xl font-black tracking-tight md:text-5xl text-slate-900">
               Ce spun clienții
             </h2>
           </div>
@@ -531,43 +608,100 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="contact" className="px-6 py-20">
-        <div className="mx-auto max-w-6xl overflow-hidden rounded-[40px] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.10)]">
-          <div className="grid lg:grid-cols-[0.95fr_1.05fr]">
-            <div className="bg-gradient-to-br from-[#0F766E] to-[#0F172A] px-8 py-12 text-white md:px-12">
-              <SectionLabel>Hai să discutăm</SectionLabel>
-
-              <h2 className="mt-3 text-4xl font-black tracking-tight text-white md:text-5xl">
-                Spune-ne cu ce te putem ajuta
-              </h2>
-
-              <p className="mt-4 max-w-xl text-lg leading-8 text-slate-200">
-                Completează formularul și revenim cât mai curând cu pașii următori,
-                opțiunile potrivite și explicațiile de care ai nevoie.
+      <section id="contact" className="px-0 sm:px-6 py-12 md:py-24 bg-[#F8FAFC]">
+        <div className="mx-auto max-w-6xl overflow-hidden rounded-none sm:rounded-[40px] bg-white shadow-2xl border-y sm:border border-slate-100">
+          <div className="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr]">
+            <div className="bg-gradient-to-br from-[#0F766E] to-[#0F172A] px-6 py-10 md:px-12 md:py-16 text-white text-center lg:text-left">
+              <SectionLabel><span className="text-teal-200">Hai să discutăm</span></SectionLabel>
+              <h2 className="mt-4 text-3xl font-black tracking-tight text-white md:text-5xl">Contact</h2>
+              <p className="mt-6 max-w-xl text-base md:text-lg leading-8 text-slate-200 mx-auto lg:mx-0">
+                Completează formularul și revenim rapid cu pașii următori.
               </p>
-
-              <div className="mt-8 space-y-4">
-                {[
-                  "Răspuns rapid la cerere",
-                  "Claritate asupra pașilor următori",
-                  "Sprijin până la semnarea contractului",
-                ].map((item) => (
-                  <div key={item} className="flex items-center gap-3">
-                    <BadgeCheck className="h-5 w-5 text-teal-200" />
-                    <span className="text-base font-medium text-slate-100">
-                      {item}
-                    </span>
-                  </div>
-                ))}
-              </div>
             </div>
-
-            <div className="px-8 py-10 md:px-12">
-              <LeadForm />
+            <div className="px-2 py-10 sm:px-12 md:py-16">
+              <div className="w-full">
+                <LeadForm />
+              </div>
             </div>
           </div>
         </div>
       </section>
+
+      <footer className="bg-[#0F172A] pt-20 pb-10 px-6 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-teal-500 via-[#0F766E] to-blue-500 opacity-30" />
+
+        <div className="mx-auto max-w-7xl relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16 mb-16">
+            <div className="lg:col-span-1">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="bg-[#0F766E] p-2 rounded-xl shadow-lg">
+                  <Building2 className="h-6 w-6 text-white" />
+                </div>
+                <p className="text-2xl font-black text-white tracking-tighter">
+                  solutii<span className="text-teal-400">ipotecare</span>.ro
+                </p>
+              </div>
+              <p className="text-slate-400 text-sm leading-7">
+                Broker de credite autorizat. Oferim consultanță personalizată și sprijin real pentru a transforma procesul bancar într-o experiență simplă.
+              </p>
+            </div>
+
+            <div>
+              <p className="text-white font-bold mb-6 text-sm uppercase tracking-[0.2em] text-teal-400">Link-uri utile</p>
+              <ul className="space-y-4 text-sm text-slate-300 font-medium">
+                <li><a href="#servicii" className="hover:text-white transition-colors flex items-center gap-2"><ArrowRight className="h-3 w-3" /> Servicii</a></li>
+                <li><a href="#proces" className="hover:text-white transition-colors flex items-center gap-2"><ArrowRight className="h-3 w-3" /> Procesul nostru</a></li>
+                <li><a href="#beneficii" className="hover:text-white transition-colors flex items-center gap-2"><ArrowRight className="h-3 w-3" /> Beneficii</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <p className="text-white font-bold mb-6 text-sm uppercase tracking-[0.2em] text-teal-400">Suport Legal</p>
+              <ul className="space-y-4 text-sm text-slate-300 font-medium">
+                <li><a href="/termeni" className="hover:text-white transition-colors">Termeni și Condiții</a></li>
+                <li><a href="/confidentialitate" className="hover:text-white transition-colors">Politica de Confidențialitate</a></li>
+                <li><a href="/cookies" className="hover:text-white transition-colors">Politica Cookies</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <p className="text-white font-bold mb-6 text-sm uppercase tracking-[0.2em] text-teal-400">Protecția Consumatorului</p>
+              <div className="flex flex-col gap-3">
+                <a href="https://anpc.ro/" target="_blank" rel="noopener noreferrer" className="group block bg-white rounded-md p-3 border-l-4 border-blue-600 transition-all hover:bg-slate-50">
+                  <div className="flex flex-col">
+                    <span className="text-[14px] text-blue-900 font-black leading-none">ANPC</span>
+                    <span className="text-[9px] text-slate-600 font-bold mt-1 leading-tight">Autoritatea Națională pentru Protecția Consumatorilor</span>
+                  </div>
+                </a>
+
+                <a href="https://anpc.ro/ce-este-sal/" target="_blank" rel="noopener noreferrer" className="group block bg-white rounded-md p-3 border-l-4 border-teal-600 transition-all hover:bg-slate-50">
+                  <div className="flex flex-col">
+                    <span className="text-[12px] text-teal-900 font-black leading-none uppercase">SAL</span>
+                    <span className="text-[9px] text-slate-600 font-bold mt-1 leading-tight">Soluționarea Alternativă a Litigiilor</span>
+                  </div>
+                </a>
+
+                <a href="https://ec.europa.eu/consumers/odr/main/index.cfm?event=main.home2.show&lng=RO" target="_blank" rel="noopener noreferrer" className="group block bg-white rounded-md p-3 border-l-4 border-red-600 transition-all hover:bg-slate-50">
+                  <div className="flex flex-col">
+                    <span className="text-[12px] text-red-900 font-black leading-none uppercase">SOL</span>
+                    <span className="text-[9px] text-slate-600 font-bold mt-1 leading-tight">Soluționarea Online a Litigiilor</span>
+                  </div>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-10 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center gap-6">
+            <p className="text-xs text-slate-500 font-medium">
+              © {new Date().getFullYear()} solutiiipotecare.ro. Toate drepturile rezervate.
+            </p>
+            <div className="flex items-center gap-2 text-[10px] text-slate-500 uppercase tracking-widest font-black italic">
+              <ShieldCheck className="h-3 w-3 text-teal-500" />
+              Intermedierea de credite este un serviciu gratuit pentru consumatori
+            </div>
+          </div>
+        </div>
+      </footer>
     </main>
   )
 }

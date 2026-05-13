@@ -1,10 +1,26 @@
 import { NextResponse } from "next/server"
 import { Resend } from "resend"
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 export async function POST(request: Request) {
   try {
+    const resendApiKey = process.env.RESEND_API_KEY
+    const adminEmail = process.env.ADMIN_EMAIL
+
+    if (!resendApiKey) {
+      return NextResponse.json(
+        { error: "RESEND_API_KEY lipsește din .env.local" },
+        { status: 500 }
+      )
+    }
+
+    if (!adminEmail) {
+      return NextResponse.json(
+        { error: "ADMIN_EMAIL lipsește din .env.local" },
+        { status: 500 }
+      )
+    }
+
+    const resend = new Resend(resendApiKey)
     const body = await request.json()
 
     const {
@@ -16,15 +32,6 @@ export async function POST(request: Request) {
       referralDetails,
       message,
     } = body
-
-    const adminEmail = process.env.ADMIN_EMAIL
-
-    if (!adminEmail) {
-      return NextResponse.json(
-        { error: "ADMIN_EMAIL lipsește din .env.local" },
-        { status: 500 }
-      )
-    }
 
     await resend.emails.send({
       from: "Solutii Ipotecare <onboarding@resend.dev>",
